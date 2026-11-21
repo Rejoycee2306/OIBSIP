@@ -1,151 +1,281 @@
-# Data Cleaning: Messy E-Commerce Sales Data
+# Retail Store Sales: Data Cleaning
 
-**Oasis Infobyte Internship | Data Analytics Track | Level 1, Task 3: Cleaning Data**
+A complete, documented cleaning of a deliberately messy retail sales dataset, turning **12,575 raw transactions** into an analysis-ready dataset of **11,852 rows**. Every decision is justified and verified.
 
-**Author:** Eseonu Rejoice Adaeze
+**Oasis Infobyte Internship (OIBSIP) · Data Analytics · Level 1, Task 3: Cleaning Data**
 
-**Date:** November 2026  
+---
 
-**Tech Stack:** Python, Pandas, NumPy, Jupyter Notebook  
+## Table of Contents
 
-## 1. Project Overview
+- [Project Overview](#project-overview)
+- [Dataset](#dataset)
+- [Tools and Libraries](#tools-and-libraries).
+- [Problems Found](#problems-found)
+- [Cleaning Workflow](#cleaning-workflow)
+- [Before vs After Summary](#before-vs-after-summary)
+- [Key Decisions](#key-decisions)
+- [Project Structure](#project-structure)
+- [How to Run](#how-to-run)
+- [Limitations](#limitations)
+- [License and Attribution](#license-and-attribution)
+- [Author](#author)
 
-Real-world data is rarely analysis-ready. This project takes a deliberately messy e-commerce sales dataset (103 order records) and turns it into a clean, consistent dataset of 100 unique orders, with every cleaning decision documented and justified.
+---
 
-**Issues found in the raw data:** inconsistent text labels, mixed date formats, corrupted numeric entries, negative values, missing values, wrong category assignments, duplicate orders, and totals that did not match quantity × price.
+## Project Overview
 
-## 2. Dataset
+Real-world data is rarely clean. This project takes a retail store sales dataset full of duplicates, missing values, inconsistent labels, wrong data types and incorrect totals, and cleans it step by step using **Python and pandas**.
 
-- **Source:** [Kaggle: Messy E-Commerce Sales Data (kandeeldev)](https://www.kaggle.com/datasets/kandeeldev/messy-e-commerce-sales-data)
-- **Raw size:** 103 rows × 11 columns
-- **Cleaned size:** 100 rows × 11 columns
-- **Order dates (after cleaning):** 5 Jan 2023 to 6 Nov 2025
-- **Currency:** not stated in the source, so values are plain numbers
+The focus is not only on *what* was fixed, but on *why* each fix is safe. Wherever possible, missing values were **recovered using rules found in the data** rather than filled with averages.
 
-| Column Name | Data Type (Clean) | Description |
-| :--- | :--- | :--- |
-| `ID` | `str` | Unique identifier (`100` to `199`) |
-| `Customer_Name` | `str` | Name of the customer (`Customer_100` – `Customer_199`) |
-| `Order_ID` | `str` | Order ID for the transaction |
-| `Order_Date` | `datetime64[us]` |  Date of the order |
-| `Product` | `str` ) | Product sold |
-| `Category` | `str`  | Product category (`Books`, `Clothing`, `Electronics`, `Home`, `Sports`) |
-| `Quantity` | `Int64` | Number of units purchased per order |
-| `Price` | `float64` | Unit price of the item sold |
-| `Payment_Method` | `str` | Payment channel (`Cash on Delivery`, `PayPal`, `Bank Transfer`, `Credit Card`) |
-| `Status` | `str` | Status of the transaction (`Shipped`, `Processing`, `Delivered`, `Cancelled`, `Returned`) |
-| `Calculated_Total` | `Float64` | Recorded sales value (replaced by `Calculated_Total` after cleaning) |
+## Dataset
 
-## 3. Tools Used
-
-Python · pandas · NumPy · Jupyter Notebook
-
-## 4. Data Quality Report (Before Cleaning)
-
-| Issue | Finding |
+| | |
 |---|---|
-| Column headers | Leading spaces in `Customer_Name` and `Category` |
-| Wrong data types | `Quantity`, `Price` and `Order_Date` stored as text |
-| Missing values | Category (8), Quantity (5), Price (5), Total (14) |
-| Negative values | Quantity (2), Price (1), Total (3) |
-| Corrupted text | Price: `abd` (×2), `four hundred`, `300$`; Quantity: `4a` |
-| Inconsistent labels | Category variants such as `electronic`, `ELECTRONICS`, `sports`; product `shoes` vs `Shoes` |
-| Mixed/invalid dates | Mostly month/day/year, one `Jan 5 2023`, one invalid `abc` |
-| Wrong categories | 9 rows where the category did not match the product |
-| Inconsistent totals | 5 rows where Total ≠ Quantity × Price (always exactly 70%) |
-| Duplicates | 1 exact duplicate row; 3 Order_IDs appearing twice |
-| Outlier | A Blender priced at 10,000 (typical price about 350) |
+| **Dataset used** | Advance Retail Store Sales Data (Kaggle), a synthetic dirty retail dataset for practice |
+| **Published by** | Brian.C (Kaggle) |
+| **Original dataset** | Dirty Retail Store Sales dataset by ahmedmohamed2003 ([original on Kaggle](https://www.kaggle.com/datasets/ahmedmohamed2003/retail-store-sales-dirty-for-data-cleaning)) |
+| **License** | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
+| **Size (raw)** | 12,575 rows × 11 columns |
+| **Period** | 1 January 2022 to 18 January 2025 |
 
-## 5. Cleaning Steps and Decisions
+The dataset used is a remixed and extended version of the original by ahmedmohamed2003, with repeated records, varied representations of similar values and mismatched numbers added on purpose to simulate real data problems. The data is **synthetic**.
 
-### 5.1 Headers and text standardisation
-- Stripped whitespace from all column names.
-- Fixed `shoes` → `Shoes` (21 → 20 distinct products).
-- Instead of only fixing spellings, **Category was derived from Product** using a fixed Product-to-Category mapping. This fixed spelling errors, missing categories (8) and wrong categories (9) in one step.
 
-| Category | Products |
+The dataset contains retail transaction records with 11 fields:
+
+| Column | Description |
 |---|---|
-| Books | Science, Biography, Comics, Fiction |
-| Clothing | Shoes, T-shirt, Jacket, Jeans |
-| Home | Blender, Microwave, Lamp, Vacuum |
-| Sports | Tennis Racket, Basketball, Yoga Mat, Football |
-| Electronics | Smartphone, Smartwatch, Laptop, Headphones |
+| `Transaction ID` | Identifier assigned to a transaction |
+| `Customer ID` | Identifier assigned to a customer |
+| `Category` | Product category |
+| `Item` | Item or product identifier/name |
+| `Price Per Unit` | Price of one unit |
+| `Quantity` | Number of units purchased |
+| `Total Spent` | Total amount recorded for the transaction |
+| `Payment Method` | Payment method used |
+| `Location` | Sales channel/location |
+| `Transaction Date` | Date of the transaction |
+| `Discount Applied` | Indicates whether a discount was applied |
 
-### 5.2 Dates
-- Converted with `pd.to_datetime(errors='coerce', format='mixed')`, reading month first (day values reach 31, month values never exceed 12).
-- The invalid entry `abc` (ID 192) became a missing date (NaT).
+The cleaned dataset covers **1 January 2022 to 18 January 2025**, based on the notebook's final date statistics.
 
-### 5.3 Numeric columns
-- `300$` → 300 and `four hundred` → 400 (intended value is clear).
-- `abd` (Price) and `4a` (Quantity) → NaN (intended value cannot be verified).
-- Quantity cast to nullable integer (`Int64`); ID cast to text.
+## Tools and Libraries
 
-### 5.4 Negative values
-- Negative quantities and the negative price were set to NaN, **not** converted with `abs()`, because a typing error cannot be told apart from a return or refund.
+- **Python** — programming language
+- **Jupyter Notebook** — interactive development and documentation
+- **pandas** — data loading, inspection, transformation, missing-value handling, deduplication and export
+- **NumPy** — numerical operations and tolerance-aware validation
+- **CSV** — cleaned dataset output format
 
-### 5.5 Missing values
-- **Category:** filled via the product mapping.
-- **Quantity and Price:** left as NaN, **not** imputed. Mean or median imputation would invent sales figures, and the recorded Total could not recover any of them.
-- Records with missing values were kept and are excluded only from calculations that need them.
+## Problems Found
 
-### 5.6 Total sales value
-- Created `Calculated_Total = Quantity × Price` and dropped the original `Total`.
-- All 5 mismatched totals were exactly 70% of Quantity × Price (a possible 30% discount), but with no discount column this could not be confirmed. `Calculated_Total` is therefore a **gross value**.
-
-### 5.7 Duplicates
-- Removed repeated Order_IDs with `drop_duplicates(subset=['Order_ID'], keep='first')`: 103 → 100 rows.
-
-### 5.8 Outliers (IQR method)
-
-| Column | Lower bound | Upper bound | Outliers found |
-|---|---|---|---|
-| Quantity | -2.50 | 9.50 | 0 |
-| Price | -412.04 | 1,427.93 | 1 (ID 117: 10,000) |
-| Calculated_Total | -1,488.33 | 4,338.44 | 2 (ID 149: 4,481.90; ID 194: 4,722.70) |
-
-- **Blender price 10,000:** treated as a data-entry error (about 30× the typical price) and replaced with the median of the remaining Blender prices (**336.02**). The median was chosen because it is not pulled by extreme values (with the outlier, mean 1,603 vs median 354).
-- **High totals (4,481.90 and 4,722.70):** retained, as they come from valid 5-unit orders.
-
-## 6. Before vs After Summary
-
-| Aspect | Before | After |
+| Issue | Where | Finding |
 |---|---|---|
-| Rows × columns | 103 × 11 | 100 × 11 |
-| Column headers | Leading spaces in 2 | All trimmed |
-| Distinct categories | 9 inconsistent labels + 8 missing | 5 consistent, 0 missing |
-| Wrong category assignments | 9 | 0 |
-| Distinct products | 21 | 20 |
-| Order_Date | Text, mixed formats, 1 invalid | Datetime (YYYY-MM-DD), 1 missing |
-| Quantity | Text; negatives and `4a` | Numeric; 8 missing |
-| Price | Text; `$`, words, `abd`, negative, outlier | Numeric; 8 missing; outlier fixed |
-| Total | 14 missing, 3 negative, 5 inconsistent | `Calculated_Total`: 0 negative, 0 inconsistent, 15 missing |
-| Duplicates | 1 exact + 3 repeated Order_IDs | 0 |
-| Complete records | n/a | 85 of 100 |
+| Duplicate rows | All columns | 125 exact duplicates |
+| Missing values | Item, Price Per Unit, Quantity, Total Spent, Discount Applied | 7,248 blanks in total |
+| Inconsistent text | Payment Method, Location | 15 spellings for 3 values; 9 for 2 values |
+| Mixed boolean formats | Discount Applied | `True`, `true`, `T`, `1`, `False`, `false`, `F`, `0` |
+| Wrong data types | Transaction Date, Quantity, Discount Applied | Dates as text, whole numbers as decimals, booleans as text |
+| Incorrect totals | Total Spent | 1,121 rows where Total ≠ Price × Quantity |
 
-Null counts in some columns rose (for example Quantity 5 → 8) because invalid entries were deliberately converted to missing values rather than guessed.
+## Cleaning Workflow
 
-## 7. Validation
+### 1. Load and preserve the source data
 
-- Every product maps to exactly one category (Home 25, Books 23, Sports 21, Clothing 17, Electronics 14).
-- `Calculated_Total` equals Quantity × Price in every row (checked with `np.isclose`).
-- No negative, zero or non-numeric values remain in Quantity or Price.
-- The saved CSV was re-run against the raw file and matches the notebook output exactly.
+The raw dataset was loaded into `df_raw`. A separate working copy (`df`) was created so that the original data remained available for comparison.
 
-## 8. Limitations
+### 2. Inspect data quality
 
-- `Calculated_Total` is a gross value and may overstate revenue for the 5 orders whose original Total reflected a 30% reduction.
-- 15 of 100 records have at least one missing value and must be excluded or handled in analyses that depend on those fields.
-- The Price for ID 117 (336.02) is an estimate; its Quantity is missing, so no revenue figure is affected.
-- Currency is not stated in the source dataset.
+The initial inspection covered:
 
-## 9. Repository Structure
+- Dataset shape and column names
+- Data types
+- Missing-value counts
+- Exact duplicate rows
+- Unique categorical values
+- Descriptive statistics and numeric ranges
+- Consistency between `Total Spent` and `Price Per Unit × Quantity`
+
+### 3. Remove duplicates
+
+The notebook identified 125 duplicate rows and 125 repeated `Transaction ID`–`Customer ID` combinations. Duplicate removal was performed using that two-column combination, keeping the first occurrence and resetting the index.
+
+The dataset decreased from 12,575 to 12,450 rows.
+
+### 4. Standardise categorical values
+
+Inconsistent text representations were normalised:
+
+- `Payment Method`: 15 representations reduced to `Cash`, `Credit Card` and `Digital Wallet`.
+- `Location`: 9 representations reduced to `Online` and `In-store`.
+
+Whitespace and casing were handled before mapping the values to standard labels.
+
+### 5. Standardise `Discount Applied`
+
+The following representations were mapped:
+
+- `true`, `T`, `1` → `True`
+- `false`, `F`, `0` → `False`
+
+The column was converted to pandas nullable Boolean dtype. Missing values were preserved because the available fields did not establish whether a discount had been applied.
+
+### 6. Correct data types
+
+The notebook applied the following types:
+
+| Column(s) | Final in-memory dtype |
+|---|---|
+| Transaction IDs, customer IDs and text fields | `string` |
+| `Price Per Unit` | `float64` |
+| `Quantity` | `Int64` (nullable integer) |
+| `Total Spent` | `Float64` (nullable float) |
+| `Transaction Date` | `datetime64` |
+| `Discount Applied` | `boolean` (nullable Boolean) |
+
+### 7. Recover missing unit prices
+
+After duplicate removal, 607 `Price Per Unit` values were missing. For these records, the notebook calculated:
+
+`Total Spent / Quantity`
+
+A calculated value was used only if it matched a unit price already observed in the dataset. All 607 values passed this check and were recovered.
+
+### 8. Recover missing item names
+
+There were 1,205 missing `Item` values after duplicate removal. The notebook tested whether each `Category`–`Price Per Unit` combination corresponded to exactly one item. The test passed for the observed data.
+
+Missing item names were then recovered using that pair. No `Unknown` item values remained.
+
+### 9. Handle incomplete sales records
+
+There were 598 records where both `Quantity` and `Total Spent` were missing. Neither value could be calculated from the other, so the records were removed rather than assigning unsupported values.
+
+The dataset decreased from 12,450 to 11,852 rows.
+
+### 10. Recalculate `Total Spent`
+
+After recovering missing prices and removing records with both quantity and total missing, 1,121 rows had totals inconsistent with the multiplication of unit price and quantity.
+
+The column was recalculated:
+
+```python
+df["Total Spent"] = df["Price Per Unit"] * df["Quantity"]
+```
+
+A second validation using `numpy.isclose()` returned zero mismatched rows.
+
+### 11. Detect and review outliers
+
+The Interquartile Range (IQR) method was applied to `Price Per Unit`, `Quantity` and `Total Spent`.
+
+It flagged 60 records. Every flagged record had:
+
+- `Price Per Unit` = 41
+- `Quantity` = 10
+- `Total Spent` = 410
+
+These values were within the observed business ranges (unit price 5–41, quantity 1–10 and total spent up to 410). They were retained because they represented valid maximum-value purchases, not data-entry errors.
+
+## Before vs After Summary
+
+| Quality check | Before | After |
+|---|---:|---:|
+| Rows | 12,575 | 11,852 |
+| Columns | 11 | 11 |
+| Exact duplicate rows | 125 | 0 |
+| Missing `Item` | 1,220 | 0 |
+| Missing `Price Per Unit` | 614 | 0 |
+| Missing `Quantity` | 606 | 0 |
+| Missing `Total Spent` | 606 | 0 |
+| Missing `Discount Applied` | 4,202 | 3,953 |
+| Payment method labels | 15 | 3 |
+| Location representations labels | 9 | 2 |
+| Rows where Total ≠ Price × Quantity | 1,121* | 0 |
+
+\* Measured after duplicates and unrecoverable rows were removed.
+The remaining 3,953 missing `Discount Applied` values are intentional. They were not imputed because the dataset did not provide a reliable basis for doing so.
+
+**Missing values by column**
+
+| Column | Before | After |
+|---|---|---|
+| Item | 1,220 | 0 |
+| Price Per Unit | 614 | 0 |
+| Quantity | 606 | 0 |
+| Total Spent | 606 | 0 |
+| Discount Applied | 4,202 | 3,953 |
+
+**Data types**
+
+| Column | Before | After |
+|---|---|---|
+| Quantity | float64 | Int64 |
+| Transaction Date | text | datetime |
+| Discount Applied | text | boolean (allows blanks) |
+
+
+## Key Decisions
+
+1. **Discount information remains incomplete.** Missing values mean unknown, not necessarily `False`.
+2. **598 rows were removed** because both quantity and total spent were missing. This avoids inventing transaction values but reduces the available records.
+3. **Item recovery relies on a uniqueness assumption:** in the observed data, `Category` plus `Price Per Unit` identified one item. This relationship should be rechecked if the dataset changes.
+4. **Fix totals before outliers.** Wrong totals would have created false outliers.
+5. **Total Spent was recalculated for all retained rows.** This assumes the intended business rule is exactly unit price multiplied by quantity, without additional taxes, discounts or fees.
+6. **Duplicate removal relies on the composite key** `Transaction ID` + `Customer ID`. This should match the source system's transaction-identity rules.
+7. **Keep valid extremes.** The 60 flagged rows are real maximum-value orders, not errors.
+
+
+## Project Structure
 
 ```
-DataAnalytics-L1-CleaningData/
-├── README.md
-├── DataCleaning_Ecommerce.ipynb
-├── cleaned_ecommerce_dataset.csv
-├── Data_cleaning_documentation.pdf
-├── messy_ecommerce_sales_data.csv
+DataAnalytics-L1-RetailDataCleaning/
+├── README.md                              # this file
+├── Task1_DataCleaning.ipynb               # cleaning notebook (code, outputs, observations)
+├── retail_store_sales.csv                 # raw dataset (CC BY-SA 4.0, see License and Attribution)
+├── cleaned_retail_store_dataset.csv       # cleaned output: 11,852 rows × 11 columns
+└── Data_cleaning_documentation.pdf       # full documentation report
 ```
+
+## How to Run
+
+1. **Get the data.** Use the included `retail_store_sales.csv`, or download *Advance Retail Store Sales Data* by Brian.C from Kaggle and save it under that name in the same folder as the notebook.
+2. **Install the requirements:**
+   ```bash
+   pip install pandas numpy jupyter
+   ```
+3. **Run the notebook:**
+   ```bash
+   jupyter notebook Task1_DataCleaning.ipynb
+   ```
+   Run all cells from top to bottom. The last cell writes `cleaned_retail_store_dataset.csv`.
+
+## Limitations
+
+- **Discount Applied** is still about 33% blank. Any discount analysis must exclude or separately report these blanks.
+- **598 rows were removed.** They contained valid Category, Payment Method, Location and Date values that are now excluded.
+- **Price and Quantity were treated as the reliable fields** when Total Spent was recalculated. The checks support this, but the original totals cannot be independently verified.
+- **The data is synthetic.** Findings describe this dataset, not a real store.
+- The valid ranges used in the range check (Price 5 to 41, Quantity 1 to 10) come from the data itself, not from an external business rule.
+
+## License and Attribution
+
+- **Original dataset:** Dirty Retail Store Sales dataset by **ahmedmohamed2003** (Kaggle).
+- **Extended version used here:** *Advance Retail Store Sales Data* by **Brian.C** (Kaggle), licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+- **Changes made:** the data was cleaned as described in this repository (duplicates removed, labels standardised, data types corrected, missing values recovered or removed, totals recalculated).
+- **Cleaned dataset:** `cleaned_retail_store_dataset.csv` is an adaptation of the data above and is therefore shared under the same **CC BY-SA 4.0** license.
+
+## Author
+
+**Eseonu Rejoice Adaeze**
+Data Analytics Intern, Oasis Infobyte
+
+LinkedIn: www.linkedin.com/in/eseonu-rejoice-adaeze-999488413
+
+## Acknowledgements
+
+- Original dataset by **ahmedmohamed2003** and extended version by **Brian.C**, both on Kaggle.
+- Project completed as part of the **Oasis Infobyte Internship (OIBSIP)**, Data Analytics track.
 
